@@ -1,5 +1,9 @@
 const Raphael = require("Raphael");
 function StackBar(dom){
+	let options = {
+		leagends:[],
+
+	}
 	let xSlots= [];	
 	let rect = {
 		cx:0,cy:0,width:0,height:0
@@ -10,8 +14,9 @@ function StackBar(dom){
 	let text = {
 		cx:0,cy:0,text:"text"
 	};
+	let bars = [];
 	let data = [[20,20,20,10],[20,20,40,20]];
-	let container,paper, xAxis, yAxis, bars;
+	let container,paper, xAxis, yAxis;
 	function getContainer(){
 		if(!dom){
 			return;	
@@ -28,8 +33,15 @@ function StackBar(dom){
 		return tmp;
 	}
 	function makePaper(container){
-		let paper = Raphael(0,0,container.width, container.height);	
-		//paper.canvas.style.backgroundColor = "yellow";	
+		let paper = Raphael(dom);
+		console.debug(container.width);
+		console.debug(container.height);
+		paper.setViewBox(0,0,container.width,container.height,true);
+		// Setting preserveAspectRatio to 'none' lets you stretch the SVG
+		paper.canvas.setAttribute('preserveAspectRatio', 'none');
+		var svg = document.querySelector("svg");
+		svg.removeAttribute("width");
+		svg.removeAttribute("height");
 		return paper;
 	}
 	function makeBars(paper,data){
@@ -39,19 +51,62 @@ function StackBar(dom){
 			let x = xSlots[i];
 			let total = data[i].reduce((accumulator,current)=>accumulator + current);
 			let y = yBegin;
+			let barParts = [];
 			for(let k=0;k<data[i].length;k++){
 				let current = data[i][k];
-				let height = barHeight * (current/total);
+				let percentage = current/total;
+				let height = barHeight * (percentage);
 				let path = `M${x} ${y}L${x} ${y - height}`;
 				console.debug(path);
 				path = paper.path(path);
+				path.data("percentage", percentage);
+				barParts.push(path);
 				path.attr("stroke",getRandomColor());
 				path.attr("stroke-width","50px");
 				y = y - height;
-			} 
+			}
+			bars.push(barParts);	
 		}
+		console.debug(bars);
 
 	}
+	function makeComparison(paper){
+		for(let i=0;i<bars.length;i++){
+			if(i===0)
+				continue;
+			for(let x=0;x<bars[i].length;x++){
+				let previous = bars[i-1][x];
+				let current = bars[i][x];
+				let v1 = previous.data("percentage");
+				let v2 = current.data("percentage");
+				let delta = Math.max(v1,v2)-Math.min(v1,v2);
+				delta = Math.trunc(delta * 100);
+				let cBox = current.getBBox();
+				let pBox = previous.getBBox();
+				let cWidth = parseInt(current.attr("stroke-width"));
+				let pWidth = parseInt(previous.attr("stroke-width"));
+				let head = {
+					x:pBox.x + pWidth/2,y:pBox.y
+				};
+				let tail = {
+					x:cBox.x - cWidth/2,y:cBox.y
+				}
+				let path = `M${head.x},${head.y}L${tail.x},${tail.y}`;
+				path = paper.path(path);
+				let pathBox = path.getBBox();
+				let text = paper.text(pathBox.cx,pathBox.cy + 10,delta+"%");
+				console.debug(text);
+				console.debug(previous);
+				console.debug(current);
+				console.debug(delta);
+				console.debug(cBox);
+				console.debug(pBox);
+				console.debug(cWidth);
+				console.debug(pWidth);
+				console.debug(path);
+			}
+		}	
+	}	
 	function getRandomColor() {
   		var letters = '0123456789ABCDEF';
   		var color = '#';
@@ -109,9 +164,7 @@ function StackBar(dom){
 		}
 			
 	}
-	function makeCompareLine(){
 			
-	}		
 		
 			
 	function init(){	
@@ -123,6 +176,7 @@ function StackBar(dom){
 		console.debug(xSlots);
 		makeYAxis(paper);
 		makeBars(paper,data);
+		makeComparison(paper);
 	}
 	init();
 }
