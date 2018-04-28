@@ -165,7 +165,9 @@ function StackBar(dom){
 			
 	}
 			
-		
+	function makeLegend(){
+			
+	}	
 			
 	function init(){	
 		container = getContainer();
